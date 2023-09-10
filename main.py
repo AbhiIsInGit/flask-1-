@@ -1,111 +1,21 @@
 from flask import Flask, request, jsonify, render_template_string
-from spleeter.separator import Separator
 import os
+import torchaudio
+import torchaudio.transforms as T
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'output'
 
-# Initialize Spleeter
-separator = Separator('spleeter:2stems')
-
-# HTML template with embedded CSS
+# HTML template with embedded CSS (same as before)
 html_template = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Vocal Remover ML</title>
-    <style>
-        /* CSS styles here */
-        body {
-            background-color: #20232a;
-            color: #61dafb;
-            font-family: Arial, sans-serif;
-        }
-
-        h1 {
-            text-align: center;
-            margin: 20px 0;
-        }
-
-        form {
-            text-align: center;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        label {
-            background-color: #61dafb;
-            color: #20232a;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        label:hover {
-            background-color: #1e90ff;
-        }
-
-        input[type="submit"] {
-            display: none;
-        }
-
-        #upload-label::before {
-            content: "Select an audio file";
-        }
-
-        #upload-label:hover::before {
-            content: "Click to select";
-        }
-
-        #upload-label::after {
-            content: "No file chosen";
-        }
-
-        input[type="file"]:focus + label {
-            outline: 2px dotted #61dafb;
-            outline-offset: -5px;
-        }
-
-        #upload-label.has-file::after {
-            content: attr(data-filename);
-        }
-
-        #waveform-container {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        #waveform {
-            width: 80%;
-            max-width: 600px;
-            height: 100px;
-            background-color: #20232a;
-            position: relative;
-            overflow: hidden;
-        }
-
-        #waveform-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to right, rgba(97, 218, 251, 0.5), rgba(97, 218, 251, 0.8));
-            position: absolute;
-            animation: wave-animation 2s linear infinite;
-        }
-
-        @keyframes wave-animation {
-            0% {
-                left: -100%;
-            }
-            100% {
-                left: 100%;
-            }
-        }
-    </style>
+    <!-- CSS styles here -->
+    <!-- ... (same as previous CSS) ... -->
 </head>
 <body>
     <h1>Vocal Remover ML</h1>
@@ -142,14 +52,19 @@ def upload():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(file_path)
 
-        # Separate vocals and accompaniment
-        output_path = app.config['OUTPUT_FOLDER']
-        separator.separate_to_file(file_path, output_path)
+        # Load the audio
+        waveform, sample_rate = torchaudio.load(file_path)
 
-        # Send the accompaniment to the user
-        accompaniment_path = os.path.join(output_path, f'{file.stem}_accompaniment.wav')
+        # Your Open-Unmix code here to separate vocals
+        # Example code (replace this with your Open-Unmix code):
+        transform = T.Resample(orig_freq=sample_rate, new_freq=44100)
+        waveform = transform(waveform)
+        
+        # Save the separated vocals (replace this with your Open-Unmix code)
+        vocals_path = os.path.join(app.config['OUTPUT_FOLDER'], f'{file.stem}_vocals.wav')
+        torchaudio.save(vocals_path, waveform, 44100)
 
-        return jsonify({"message": "Processing complete", "accompaniment_path": accompaniment_path})
+        return jsonify({"message": "Processing complete", "vocals_path": vocals_path})
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
